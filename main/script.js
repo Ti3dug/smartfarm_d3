@@ -251,9 +251,13 @@ firebase.database().ref("/VoltAmpe/Bulb").on("value", function(snapshot) {
   var bulb_ampe = snapshot.child("Ampe").val();
   document.getElementById("bulb-ampe").innerHTML = bulb_ampe;
 
-  if(bulb_volt >= 20 && bulb_volt <= 30 && bulb_ampe >= 20 && bulb_ampe <= 30){
+  if(bulb_volt >= 200 && bulb_ampe >= 900){
     document.getElementById("bulb-warn").innerHTML = "Good";
     document.getElementById("bulb-warn").style.color = "#1b9c85";
+  }
+  else if(bulb_volt > 0 && bulb_volt < 200 && bulb_ampe > 0 && bulb_ampe < 900) {
+    document.getElementById("bulb-warn").innerHTML = "Off";
+    document.getElementById("bulb-warn").style.color = "#7d8da1";
   }
   else {
     document.getElementById("bulb-warn").innerHTML = "Warning";
@@ -267,9 +271,13 @@ firebase.database().ref("/VoltAmpe/Fan").on("value", function(snapshot) {
   var fan_ampe = snapshot.child("Ampe").val();
   document.getElementById("fan-ampe").innerHTML = fan_ampe;
 
-  if(fan_volt >= 20 && fan_volt <= 30 && fan_ampe >= 20 && fan_ampe <= 30){
+  if(fan_volt >= 200 && fan_ampe >= 900){
     document.getElementById("fan-warn").innerHTML = "Good";
     document.getElementById("fan-warn").style.color = "#1b9c85";
+  }
+  else if(fan_volt > 0 && fan_volt < 200 && fan_ampe > 0 && fan_ampe < 900) {
+    document.getElementById("fan-warn").innerHTML = "Off";
+    document.getElementById("fan-warn").style.color = "#7d8da1";
   }
   else {
     document.getElementById("fan-warn").innerHTML = "Warning";
@@ -283,9 +291,13 @@ firebase.database().ref("/VoltAmpe/Pump").on("value", function(snapshot) {
   var pump_ampe = snapshot.child("Ampe").val();
   document.getElementById("pump-ampe").innerHTML = pump_ampe;
 
-  if(pump_volt >= 20 && pump_volt <= 30 && pump_ampe >= 20 && pump_ampe <= 30){
+  if(pump_volt >= 200 && pump_ampe >= 900){
     document.getElementById("pump-warn").innerHTML = "Good";
     document.getElementById("pump-warn").style.color = "#1b9c85";
+  }
+  else if(pump_volt > 0 && pump_volt < 200 && pump_ampe > 0 && pump_ampe < 900) {
+    document.getElementById("pump-warn").innerHTML = "Off";
+    document.getElementById("pump-warn").style.color = "#7d8da1";
   }
   else {
     document.getElementById("pump-warn").innerHTML = "Warning";
@@ -546,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('bright-submit').addEventListener('click', function() {
       var brightMin = document.getElementById('text-bright-min').value;
       var brightMax = document.getElementById('text-bright-max').value;
-      if (isValidInput(tempMin, tempMax)) {
+      if (isValidInput(brightMin, brightMax)) {
         database.ref('Set Value/Brightness').set({
             Min: brightMin,
             Max: brightMax
@@ -587,24 +599,24 @@ document.addEventListener('DOMContentLoaded', function() {
               firebase.database().ref("/Set Value").on("value", function(snapshot) {
               // Điều khiển thiết bị dựa trên giá trị nhiệt độ
                 var setvalue = snapshot.val();
-                if (currentTemp < setvalue.Temperature.Min) {
-                    controlDevice('Fan', 'OFF');
-                    controlDevice('Bulb', 'ON');
-                } else if (currentTemp >= setvalue.Temperature.Min && currentTemp <= setvalue.Temperature.Max) {
-                    controlDevice('Fan', 'OFF');
-                    controlDevice('Bulb', 'OFF');
-                } else if (currentTemp > setvalue.Temperature.Max) {
-                    controlDevice('Fan', 'ON');
-                    controlDevice('Bulb', 'OFF');
+                if (currentTemp < setvalue.Temperature.Min || currentBright < setvalue.Brightness.Min) {
+                  controlDevice('Bulb', 'ON');
                 }
-
-                // Điều khiển thiết bị dựa trên giá trị độ ẩm
-                // if (currentHum < settings.humidity.min) { ... }
-                // if (currentHum > settings.humidity.max) { ... }
-
-                // Điều khiển thiết bị dựa trên giá trị độ sáng
-                // if (currentBright < settings.brightness.min) { ... }
-                // if (currentBright > settings.brightness.max) { ... }
+                else {
+                  controlDevice('Bulb', 'OFF');
+                }
+                if (currentHum < setvalue.Humidity.Min || currentTemp > setvalue.Temperature.Max) {
+                  controlDevice('Pump', 'ON');
+                }
+                else {
+                  controlDevice('Pump', 'OFF');
+                }
+                if (currentHum > setvalue.Humidity.Max || currentTemp > setvalue.Temperature.Max) {
+                  controlDevice('Fan', 'ON');
+                }
+                else {
+                  controlDevice('Fan', 'OFF');
+                }
             });
           });
         }
