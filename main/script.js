@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Lấy trạng thái từ Firebase khi trang được tải lại
-database.ref('/Mode').once('value').then(function(snapshot) {
+database.ref('/Mode').on('value', function(snapshot) {
     var mode = snapshot.val();
     if (mode === 'Auto') {
         colorModeToggle.checked = true;
