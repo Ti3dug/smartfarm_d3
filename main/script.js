@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Lấy số hàng hiện tại trong bảng
       var currentRowCount = task_table.rows.length;
-      if (currentRowCount > 10) {
+      if (currentRowCount >= 10) {
           alert("Số lượng task đã đạt tối đa (10 tasks).");
           return;
       }
@@ -465,58 +465,75 @@ document.addEventListener('DOMContentLoaded', function () {
       task_row.setAttribute("data-task-id", taskId);
   }
 
-  // Tải các task từ Firebase khi trang được tải lại
-  database.ref("/Tasks").once("value", function (snapshot) {
-      snapshot.forEach(function (childSnapshot) {
-          var task = childSnapshot.val();
-          var task_table = document.querySelector(".task-body-table table tbody");
+  function loadTasks() {
+      var task_table = document.querySelector(".task-body-table table tbody");
+      task_table.innerHTML = ""; // Clear current table contents
+      var currentTime = new Date();
 
-          // Tạo hàng mới
-          var task_row = task_table.insertRow();
+      database.ref("/Tasks").once("value", function (snapshot) {
+          snapshot.forEach(function (childSnapshot) {
+              var task = childSnapshot.val();
+              var selectedTime = new Date(task.datetime);
 
-          // Tạo cột số thứ tự
-          var index_cell = task_row.insertCell(0);
-          index_cell.textContent = task_table.rows.length;
+              // Xóa task nếu datetime đã trôi qua
+              if (selectedTime < currentTime) {
+                  database.ref("/Tasks/" + task.id).remove();
+              } else {
+                  // Tạo hàng mới
+                  var task_row = task_table.insertRow();
 
-          // Tạo cột device
-          var device_cell = task_row.insertCell(1);
-          device_cell.textContent = task.device;
+                  // Tạo cột số thứ tự
+                  var index_cell = task_row.insertCell(0);
+                  index_cell.textContent = task_table.rows.length + 1;
 
-          // Tạo cột datetime
-          var datetime_cell = task_row.insertCell(2);
-          datetime_cell.textContent = task.datetime;
+                  // Tạo cột device
+                  var device_cell = task_row.insertCell(1);
+                  device_cell.textContent = task.device;
 
-          // Tạo cột state
-          var state_cell = task_row.insertCell(3);
-          state_cell.textContent = task.status;
+                  // Tạo cột datetime
+                  var datetime_cell = task_row.insertCell(2);
+                  datetime_cell.textContent = task.datetime;
 
-          // Tạo cột nút xóa
-          var delete_cell = task_row.insertCell(4);
-          var delete_button = document.createElement("button");
-          delete_button.innerHTML = "Delete";
-          delete_button.className = "delete-button"; // Thêm class cho nút xóa để áp dụng CSS
-          delete_button.onclick = function () {
-              var rowIndex = this.parentNode.parentNode.rowIndex; // Lấy chỉ số hàng của task được xóa
-              var taskId = task_row.getAttribute("data-task-id"); // Lấy ID của task từ thuộc tính data-task-id
+                  // Tạo cột state
+                  var state_cell = task_row.insertCell(3);
+                  state_cell.textContent = task.status;
 
-              // Xóa task khỏi Firebase
-              database.ref("/Tasks/" + taskId).remove();
+                  // Tạo cột nút xóa
+                  var delete_cell = task_row.insertCell(4);
+                  var delete_button = document.createElement("button");
+                  delete_button.innerHTML = "Delete";
+                  delete_button.className = "delete-button"; // Thêm class cho nút xóa để áp dụng CSS
+                  delete_button.onclick = function () {
+                      var rowIndex = this.parentNode.parentNode.rowIndex; // Lấy chỉ số hàng của task được xóa
+                      var taskId = task_row.getAttribute("data-task-id"); // Lấy ID của task từ thuộc tính data-task-id
 
-              // Xóa hàng chứa nút xóa
-              this.parentNode.parentNode.remove();
+                      // Xóa task khỏi Firebase
+                      database.ref("/Tasks/" + taskId).remove();
 
-              // Cập nhật lại số thứ tự của các task sau khi xóa
-              for (var i = 0; i < task_table.rows.length; i++) {
-                  task_table.rows[i].cells[0].textContent = i + 1; // Cập nhật số thứ tự
+                      // Xóa hàng chứa nút xóa
+                      this.parentNode.parentNode.remove();
+
+                      // Cập nhật lại số thứ tự của các task sau khi xóa
+                      for (var i = 0; i < task_table.rows.length; i++) {
+                          task_table.rows[i].cells[0].textContent = i + 1; // Cập nhật số thứ tự
+                      }
+                  };
+                  delete_cell.appendChild(delete_button);
+
+                  // Gán ID của task vào hàng để tiện truy cập
+                  task_row.setAttribute("data-task-id", task.id);
               }
-          };
-          delete_cell.appendChild(delete_button);
+          });
       });
-  });
+  }
 
   // Gán hàm addTask cho nút Add
   document.getElementById("add-task-button").onclick = addTask;
+
+  // Lắng nghe sự thay đổi ở phần /Tasks trên Firebase
+  database.ref("/Tasks").on("value", loadTasks);
 });
+
 
 // Set valueeeeeeeeeeee///////////
 document.addEventListener('DOMContentLoaded', function() {
@@ -567,24 +584,24 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Lấy các giá trị min/max từ Firebase khi tải lại trang
-  database.ref('Set Value/Temperature').once('value').then(function(snapshot) {
-      var tempSettings = snapshot.val();
-      document.getElementById('text-temp-min').value = tempSettings.Min;
-      document.getElementById('text-temp-max').value = tempSettings.Max;
+  database.ref('Set Value/Temperature').on('value', function(snapshot) {
+    var tempSettings = snapshot.val();
+    document.getElementById('text-temp-min').value = tempSettings.Min;
+    document.getElementById('text-temp-max').value = tempSettings.Max;
   });
 
-  database.ref('Set Value/Humidity').once('value').then(function(snapshot) {
-      var humSettings = snapshot.val();
-      document.getElementById('text-hum-min').value = humSettings.Min;
-      document.getElementById('text-hum-max').value = humSettings.Max;
+  database.ref('Set Value/Humidity').on('value', function(snapshot) {
+    var humSettings = snapshot.val();
+    document.getElementById('text-hum-min').value = humSettings.Min;
+    document.getElementById('text-hum-max').value = humSettings.Max;
   });
 
-  database.ref('Set Value/Brightness').once('value').then(function(snapshot) {
-      var brightSettings = snapshot.val();
-      document.getElementById('text-bright-min').value = brightSettings.Min;
-      document.getElementById('text-bright-max').value = brightSettings.Max;
+  database.ref('Set Value/Brightness').on('value', function(snapshot) {
+    var brightSettings = snapshot.val();
+    document.getElementById('text-bright-min').value = brightSettings.Min;
+    document.getElementById('text-bright-max').value = brightSettings.Max;
   });
-
+  
   // Kiểm tra các giá trị và điều khiển thiết bị
   function checkAndControlDevices() {
       // Lấy các giá trị từ Firebase
