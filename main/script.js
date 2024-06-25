@@ -466,66 +466,93 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function loadTasks() {
-      var task_table = document.querySelector(".task-body-table table tbody");
-      task_table.innerHTML = ""; // Clear current table contents
-      var currentTime = new Date();
+    var task_table = document.querySelector(".task-body-table table tbody");
+    task_table.innerHTML = ""; // Clear current table contents
+    var currentTime = new Date();
 
-      database.ref("/Tasks").once("value", function (snapshot) {
-          snapshot.forEach(function (childSnapshot) {
-              var task = childSnapshot.val();
-              var selectedTime = new Date(task.datetime);
+    database.ref("/Tasks").once("value", function (snapshot) {
+        snapshot.forEach(function (childSnapshot) {
+            var task = childSnapshot.val();
+            var selectedTime = new Date(task.datetime);
 
-              // Xóa task nếu datetime đã trôi qua
-              if (selectedTime < currentTime) {
-                  database.ref("/Tasks/" + task.id).remove();
-              } else {
-                  // Tạo hàng mới
-                  var task_row = task_table.insertRow();
+            // Xóa task nếu datetime đã trôi qua
+            if (selectedTime < currentTime) {
+                database.ref("/Tasks/" + task.id).remove();
+            } else {
+                // Tạo hàng mới
+                var task_row = task_table.insertRow();
 
-                  // Tạo cột số thứ tự
-                  var index_cell = task_row.insertCell(0);
-                  index_cell.textContent = task_table.rows.length + 1;
+                // Tạo cột số thứ tự
+                var index_cell = task_row.insertCell(0);
+                index_cell.textContent = task_table.rows.length;
 
-                  // Tạo cột device
-                  var device_cell = task_row.insertCell(1);
-                  device_cell.textContent = task.device;
+                // Tạo cột device
+                var device_cell = task_row.insertCell(1);
+                device_cell.textContent = task.device;
 
-                  // Tạo cột datetime
-                  var datetime_cell = task_row.insertCell(2);
-                  datetime_cell.textContent = task.datetime;
+                // Tạo cột datetime
+                var datetime_cell = task_row.insertCell(2);
+                datetime_cell.textContent = task.datetime;
 
-                  // Tạo cột state
-                  var state_cell = task_row.insertCell(3);
-                  state_cell.textContent = task.status;
+                // Tạo cột state
+                var state_cell = task_row.insertCell(3);
+                state_cell.textContent = task.status;
 
-                  // Tạo cột nút xóa
-                  var delete_cell = task_row.insertCell(4);
-                  var delete_button = document.createElement("button");
-                  delete_button.innerHTML = "Delete";
-                  delete_button.className = "delete-button"; // Thêm class cho nút xóa để áp dụng CSS
-                  delete_button.onclick = function () {
-                      var rowIndex = this.parentNode.parentNode.rowIndex; // Lấy chỉ số hàng của task được xóa
-                      var taskId = task_row.getAttribute("data-task-id"); // Lấy ID của task từ thuộc tính data-task-id
+                // Tạo cột nút xóa
+                var delete_cell = task_row.insertCell(4);
+                var delete_button = document.createElement("button");
+                delete_button.innerHTML = "Delete";
+                delete_button.className = "delete-button"; // Thêm class cho nút xóa để áp dụng CSS
+                delete_button.onclick = function () {
+                    var rowIndex = this.parentNode.parentNode.rowIndex; // Lấy chỉ số hàng của task được xóa
+                    var taskId = task_row.getAttribute("data-task-id"); // Lấy ID của task từ thuộc tính data-task-id
 
-                      // Xóa task khỏi Firebase
-                      database.ref("/Tasks/" + taskId).remove();
+                    // Xóa task khỏi Firebase
+                    database.ref("/Tasks/" + taskId).remove();
 
-                      // Xóa hàng chứa nút xóa
-                      this.parentNode.parentNode.remove();
+                    // Xóa hàng chứa nút xóa
+                    this.parentNode.parentNode.remove();
 
-                      // Cập nhật lại số thứ tự của các task sau khi xóa
-                      for (var i = 0; i < task_table.rows.length; i++) {
-                          task_table.rows[i].cells[0].textContent = i + 1; // Cập nhật số thứ tự
-                      }
-                  };
-                  delete_cell.appendChild(delete_button);
+                    // Cập nhật lại số thứ tự của các task sau khi xóa
+                    for (var i = 0; i < task_table.rows.length; i++) {
+                        task_table.rows[i].cells[0].textContent = i + 1; // Cập nhật số thứ tự
+                    }
+                };
+                delete_cell.appendChild(delete_button);
 
-                  // Gán ID của task vào hàng để tiện truy cập
-                  task_row.setAttribute("data-task-id", task.id);
-              }
-          });
-      });
-  }
+                // Gán ID của task vào hàng để tiện truy cập
+                task_row.setAttribute("data-task-id", task.id);
+
+                // Tính thời gian chênh lệch và chạy task
+                var timeDifference = selectedTime.getTime() - currentTime.getTime();
+                runTask(task, timeDifference);
+            }
+        });
+    });
+}
+
+function runTask(task, delay) {
+    setTimeout(function () {
+        // Cập nhật Firebase với trạng thái của thiết bị
+        var devicePath = "/Device/" + task.device; // Đường dẫn cố định cho từng thiết bị
+        database.ref(devicePath).set(task.status);
+
+        // Xóa task khỏi Firebase sau khi thực hiện
+        database.ref("/Tasks/" + task.id).remove();
+
+        // Tìm và xóa hàng task sau khi thực hiện
+        var task_row = document.querySelector(`tr[data-task-id="${task.id}"]`);
+        if (task_row) {
+            task_row.remove();
+
+            // Cập nhật lại số thứ tự của các task sau khi xóa
+            var task_table = document.querySelector(".task-body-table table tbody");
+            for (var i = 0; i < task_table.rows.length; i++) {
+                task_table.rows[i].cells[0].textContent = i + 1; // Cập nhật số thứ tự
+            }
+        }
+    }, delay);
+}
 
   // Gán hàm addTask cho nút Add
   document.getElementById("add-task-button").onclick = addTask;
@@ -601,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('text-bright-min').value = brightSettings.Min;
     document.getElementById('text-bright-max').value = brightSettings.Max;
   });
-  
+
   // Kiểm tra các giá trị và điều khiển thiết bị
   function checkAndControlDevices() {
       // Lấy các giá trị từ Firebase
